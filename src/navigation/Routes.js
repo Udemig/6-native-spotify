@@ -8,14 +8,60 @@ import SongInfoScreen from '../screens/SongInfoScreen';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-
+import Entypo from 'react-native-vector-icons/Entypo';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 const Tab = createBottomTabNavigator();
 
 const BottomTabs = () => {
   return (
-    <Tab.Navigator>
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+    <Tab.Navigator
+      screenOptions={{
+        tabBarStyle: {
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          shadowOpacity: 4,
+          shadowRadius: 4,
+          shadowOffset: {
+            width: 0,
+            height: -4,
+          },
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          borderTopWidth: 0,
+        },
+      }}>
+      <Tab.Screen
+        options={{
+          headerShown: false,
+          tabBarLabel: 'Home',
+          tabBarLabelStyle: {color: 'white', fontSize: 13, fontWeight: '500'},
+          tabBarIcon: ({focused}) =>
+            focused ? (
+              <Entypo name="home" color="white" size={24} />
+            ) : (
+              <AntDesign name="home" color="white" size={24} />
+            ),
+        }}
+        name="Home"
+        component={HomeScreen}
+      />
+      <Tab.Screen
+        options={{
+          headerShown: false,
+          tabBarLabel: 'Profile',
+          tabBarLabelStyle: {color: 'white', fontSize: 13, fontWeight: '500'},
+          tabBarIcon: ({focused}) =>
+            focused ? (
+              <Ionicons name="person" color="white" size={24} />
+            ) : (
+              <Ionicons name="person-outline" color="white" size={24} />
+            ),
+        }}
+        name="Profile"
+        component={ProfileScreen}
+      />
     </Tab.Navigator>
   );
 };
@@ -29,8 +75,9 @@ export default function Routes() {
         screenOptions={{
           headerShown: false,
         }}>
-        <Stack.Screen name="Liked" component={LikedSongScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Main" component={BottomTabs} />
+        <Stack.Screen name="Liked" component={LikedSongScreen} />
         <Stack.Screen name="Info" component={SongInfoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
