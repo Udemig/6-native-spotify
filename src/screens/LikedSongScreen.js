@@ -22,10 +22,12 @@ import Modal from 'react-native-modal';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Feather from 'react-native-vector-icons/Feather';
 import axios from 'axios';
-import TrackPlayer from 'react-native-track-player';
+import TrackPlayer, {useProgress} from 'react-native-track-player';
 export default function LikedSongScreen() {
   const navigation = useNavigation();
 
+  const progress = useProgress();
+  console.log(progress);
   const [searchText, setSearchText] = useState('Türkiye de Popüler Müzikler');
   const [searchedTracks, setSearchedTracks] = useState([]);
   const [selectedTrack, setSelectedTrack] = useState(null);
@@ -59,6 +61,35 @@ export default function LikedSongScreen() {
     }
   };
 
+  const setupPlayer = async () => {
+    try {
+      /*
+       * `TrackPlayer` kütüphanesinin oynatıcıyı kurmasını sağlar.Bu işlem, oynatıcıyı başlatmak için
+       * gerekli olan yapılandırmayı sağlar.
+       */
+      await TrackPlayer.setupPlayer();
+      TrackPlayer.updateOptions({
+        //* Oynatıcının sahip olacağı özellikleri belirler
+        capabilities: [
+          TrackPlayer.CAPABILITY_PLAY, // Oynatma işlemi yapabilmesi için kullanırız
+          TrackPlayer.CAPABILITY_PAUSE, // Oynatıcıda duraklatma işlemi için kullanırız
+          TrackPlayer.CAPABILITY_STOP, // Oynatıcıda durdurma işlemi için kullanırız
+          TrackPlayer.CAPABILITY_SKIP_TO_NEXT, // Oynatıcıda bir sonraki müziği geçiş yapabilmesi için kullanılır
+          TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS, // Oynatıcıda bir önceki müziğe geçiş yapabilmesi için kullanılır
+          TrackPlayer.CAPABILITY_SEEK_TO, // Belirli bir zamana atlama
+        ],
+        // compactCapabilities: [
+        //   TrackPlayer.CAPABILITY_PLAY,
+        //   TrackPlayer.CAPABILITY_PAUSE,
+        //   TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
+        //   TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS,
+        // ],
+      });
+    } catch (error) {
+      console.log('Error setting up player:', error);
+    }
+  };
+
   const handlePlay = async track => {
     const trackData = {
       id: track.track.key,
@@ -80,8 +111,38 @@ export default function LikedSongScreen() {
   };
   useEffect(() => {
     handleSearch();
+    setupPlayer();
   }, []);
-  console.log(selectedTrack);
+
+  const formatTime = seconds => {
+    // toplam saniyeyi dakikaya çevir
+    const mins = Math.floor(seconds / 60);
+    // toplam saniye sayısından geriye kalan saniyeyi hesaplar
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const togglePlayback = async () => {
+    if (isPlaying) {
+      //* Müzik oynatılıyorsa durdur
+      await TrackPlayer.pause();
+    } else {
+      //* Müzik duruyorsa oynat
+      await TrackPlayer.play();
+    }
+    //* isPlaying değerini oynatma ve durdurma butonuna basıldığında tam tersi değerine çevir
+    setIsPlaying(!isPlaying);
+  };
+  //* Oynatılan müziği 10 saniye positiona göre geri aldık
+  const seekBackward = async () => {
+    const position = await TrackPlayer.getPosition();
+    await TrackPlayer.seekTo(position - 10);
+  };
+  const seekForward = async () => {
+    const position = await TrackPlayer.getPosition();
+    await TrackPlayer.seekTo(position + 10);
+  };
+
   return (
     <>
       <LinearGradient colors={['#614385', '#516395']} style={{flex: 1}}>
@@ -234,7 +295,16 @@ export default function LikedSongScreen() {
                   backgroundColor: 'gray',
                   borderRadius: 5,
                 }}>
-                <View style={[styles.progressbar, {width: 1 * 100}]} />
+                <View
+                  style={[
+                    styles.progressbar,
+                    {
+                      width: `${
+                        (progress.position / progress.duration) * 100
+                      }%`,
+                    },
+                  ]}
+                />
                 <View
                   style={{
                     position: 'absolute',
@@ -243,7 +313,7 @@ export default function LikedSongScreen() {
                     height: 10,
                     backgroundColor: 'white',
                     borderRadius: 5,
-                    left: 100,
+                    left: `${(progress.position / progress.duration) * 100}%`,
                   }}
                 />
               </View>
@@ -255,8 +325,12 @@ export default function LikedSongScreen() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}>
-                <Text style={{color: 'white', fontSize: 15}}>00:00</Text>
-                <Text style={{color: 'white', fontSize: 15}}>00:00</Text>
+                <Text style={{color: 'white', fontSize: 15}}>
+                  {formatTime(progress.position)}
+                </Text>
+                <Text style={{color: 'white', fontSize: 15}}>
+                  {formatTime(progress.duration)}
+                </Text>
               </View>
 
               <View
@@ -266,7 +340,7 @@ export default function LikedSongScreen() {
                   marginTop: 17,
                   alignItems: 'center',
                 }}>
-                <Pressable>
+                <Pressable onPress={seekBackward}>
                   <Entypo
                     name="controller-fast-backward"
                     size={30}
@@ -276,27 +350,17 @@ export default function LikedSongScreen() {
                 <Pressable>
                   <Ionicons name="play-skip-back" size={30} color={'white'} />
                 </Pressable>
-                <Pressable>
+                <Pressable onPress={togglePlayback}>
                   {isPlaying ? (
                     <AntDesign name="pausecircle" size={60} color="white" />
                   ) : (
-                    <Pressable
-                      style={{
-                        backgroundColor: 'white',
-                        width: 60,
-                        height: 60,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderRadius: 30,
-                      }}>
-                      <Entypo name="controller-play" size={26} color="black" />
-                    </Pressable>
+                    <Entypo name="controller-play" size={60} color="white" />
                   )}
                 </Pressable>
                 <Pressable>
                   <Ionicons name="play-skip-forward" size={30} color="white" />
                 </Pressable>
-                <Pressable>
+                <Pressable onPress={seekForward}>
                   <Entypo
                     name="controller-fast-forward"
                     size={30}
